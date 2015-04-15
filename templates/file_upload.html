@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block body %}
+	<h1>Upload new File</h1>
+	<pre></pre>
+	<form class='some-form' action="" method=post enctype=multipart/form-data>
+		<div style='margin:10px auto;border:1px dotted black;height:200px'>
+			<div class='addText' style='text-align:center;margin-top:100px;'> 
+				{% with messages = get_flashed_messages() %}
+					{% for message in messages %}
+						You uploaded {{message}}
+					{% else %}
+						Drag and drop file here
+					{% endfor %}
+				{% endwith %}
+			</div>
+			<input class='input-filer' type='file' name='file' accept='csv/*' style='margin-top:-120px;width:31.5%;height:200px;position:absolute;opacity:0;cursor:pointer'>
+		</div>
+		{% with messages = get_flashed_messages() %}
+			{% for message in messages %}
+				<div style='text-align:center'>
+					<input type='button' value='Apriori' class='apriori'>
+					<input type='button' value='FP Growth' class='fp-growth'>
+					<input type='button' value='K-Nearest Neighbors' class='knn'>
+				</div>
+			{% else %}
+				<div style='text-align:center'>
+					<input type=submit value=Upload>
+				</div>
+			{% endfor %}
+		{% endwith %}
+	</form>
+	<script type='text/javascript'>
+		$(document).ready(function(){
+			function readURL(input) {
+				console.log("here in readURL");
+				if (input.files && input.files[0]) {
+					var reader = new FileReader();
+					reader.readAsDataURL(input.files[0]);
+				}
+			}
+			$('.input-filer').change(function(e){
+				if(e.target.value != undefined && e.target.value != ""){
+					readURL(e.target);
+					var data = new FormData();
+					$.each($(e.target)[0].files, function(i, file) {
+						data.append('file-'+i, file);
+					});
+					$(".addText").html("Click Upload");
+				}
+			});
+			function output(inp) {
+				document.body.appendChild(document.createElement('pre')).innerHTML = inp;
+			}
+			Object.size = function(obj) {
+				var size = 0, key;
+				for (key in obj) {
+					if (obj.hasOwnProperty(key)) size++;
+				}
+				return size;
+			};
+			$('.knn').click(function(e){
+				var data = window.location.search.split('=')[1];
+				$.ajax({
+					url:'/knn/'+data,
+					method:'get',
+					dataType: 'json'
+				})
+				.done(function(res){
+					for(var i = 0; i < res.length; i++){
+						$('.box').append('<div>'+res[i]+'</div>')
+					}
+					$('.some-form').hide();
+				});
+			});
+			$('.fp-growth').click(function(e){
+				var data = window.location.search.split('=')[1];
+				$.ajax({
+					url:'/fp-growth/'+data,
+					method:'get',
+					dataType: 'json'
+				})
+				.done(function(res){
+					for(var i = 0; i < res.length; i++){
+						$('.box').append('<div>'+res[i]+'</div>')
+					}
+					$('.some-form').hide();
+				});
+			});
+			$('.apriori').click(function(e){
+				var data = window.location.search.split('=')[1];
+				$.ajax({
+					url:'/apriori/'+data,
+					method:'get',
+					dataType: 'json'
+				})
+				.done(function(res){
+					//res['1'].items
+					console.log(res);
+					$('.box').append('<div style="width:30vh;margin-left:30vh;background:burlywood;padding:7px;cursor:pointer;border:1px solid" class="go-back">Upload another file</div>');
+					$('.go-back').click(function(){window.location = '/file';});
+					for (var i = 1; i <= Object.size(res);i++){
+						$('.box').append('<div class=rule'+i+'>'+i+'. Rules----------------------------------------------------------------------#'+'</div>');
+						for(var j = 0; j < Object.size(res[i].rules);j++)
+							$('.rule'+i).append('<div>'+res[i].rules[j][0]+'==>'+res[i].rules[j][1]+' ,Confidence: '+res[i].rules[j][2]+'</div>');
+						for(var k = 0; k < res[i].items.length; k++){
+							$('.rule'+i).append('<div>'+res[i].items[k][0]+': Support('+res[i].items[k][1]+')</div>');
+						}
+						// print_this rules: res[i].rules[key] ==> value[0], Support: value[1] \n
+					}
+					var str = JSON.stringify(res,undefined,2);
+					//$('pre').append(str);
+					$('.some-form').html('');
+				});
+			});
+		});
+	</script>
+{% endblock %}
