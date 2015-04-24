@@ -1,4 +1,4 @@
-#Hello Changes
+from __future__ import print_function, division, absolute_import, unicode_literals
 from flask import *
 from werkzeug import *
 from jinja2 import *
@@ -10,7 +10,12 @@ import random
 import math
 import operator
 
-from itertools import chain, combinations, imap
+import numpy as np
+from sklearn.cluster import KMeans
+from scipy.spatial import distance
+from sklearn.cluster import DBSCAN
+
+from itertools import *#chain, combinations, imap
 from collections import defaultdict, namedtuple
 from optparse import OptionParser
 
@@ -23,6 +28,98 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 4 *1024 * 1024
 
 super_f = {}
+
+'''db scan'''
+def dbscan_processing(data):
+	labels = ['id', 'date_time', 'incident_num', 'location', 'apt_lot', 'type_id', 'lat', 'lng']
+	coords = [(float(d['lat']), float(d['lng'])) for d in data if len(d['lat']) > 0]
+	some_data = []
+	distance_matrix = distance.squareform(distance.pdist(coords))
+
+	db = DBSCAN(eps=0.03).fit(distance_matrix)
+
+	for k in set(db.labels_):
+		class_members = [index[0] for index in np.argwhere(db.labels_ == k)]
+		for index in class_members:
+			some_data.append(str(k)+', {0},{1}'.format(*coords[index]))
+			#print ('%s,%s' % (int(k), '{0},{1}'.format(*coords[index])))
+	return some_data
+
+'''k means'''
+def kmeans_processing(offer_sheet,transaction_sheet):
+	#first row of each spreadsheet is column headings, so we remove them
+	offer_sheet_data = offer_sheet[1:]
+	transaction_sheet_data = transaction_sheet[1:]
+
+	K=4 #four clusters
+	num_deals = len(offer_sheet_data) #assume listed offers are distinct
+
+	#find the sorted list of customer last names
+	customer_names = []
+
+	for row in transaction_sheet_data:
+		customer_names.append(row[0])
+	customer_names = list(set(customer_names))
+	customer_names.sort()
+	num_customers = len(customer_names)
+
+	#create a num_deals x num_customers matrix of which customer took which deal
+	deal_customer_matrix = np.zeros((num_deals,num_customers))
+	for row in transaction_sheet_data:
+		cust_number = customer_names.index(row[0])
+		deal_number = int(row[1])
+		deal_customer_matrix[deal_number-1,cust_number] = 1
+	customer_deal_matrix = deal_customer_matrix.transpose()
+
+	#initialize and carry out clustering
+	km = KMeans(n_clusters = K)
+	km.fit(customer_deal_matrix)
+	some1 = []
+	some2 = []
+	some3 = []
+	some_data = {}
+	#find center of clusters
+	centers = km.cluster_centers_
+	centers[centers<0] = 0 #the minimization function may find very small negative numbers, we threshold them to 0
+	centers = centers.round(2)
+	#print('\n--------Centers of the four different clusters--------')
+	some1.append('Deal    Cent1    Cent2    Cent3    Cent4')
+	#print('Deal\t Cent1\t Cent2\t Cent3\t Cent4')
+	for i in range(num_deals):
+		some1.append(str(i+1)+'    '+str(centers[0,i])+'    '+str(centers[1,i])+'    '+str(centers[2,i])+'    '+str(centers[3,i]))
+		#print(i+1,'\t',centers[0,i],'\t',centers[1,i],'\t',centers[2,i],'\t',centers[3,i])
+
+	#find which cluster each customer is in
+	prediction = km.predict(customer_deal_matrix)
+	#print('\n--------Which cluster each customer is in--------')
+	#print('{:<15}\t{}'.format('Customer','Cluster'))
+	some2.append('{:<15}    {}'.format('Customer','Cluster'))
+	for i in range(len(prediction)):
+		some2.append('{:<15}    {}'.format(customer_names[i],prediction[i]+1))
+		#print('{:<15}\t{}'.format(customer_names[i],prediction[i]+1))
+
+	#determine which deals are most often in each cluster
+	deal_cluster_matrix = np.zeros((num_deals,K),dtype=np.int)
+	#print('\n-----How many of each deal involve a customer in each cluster-----')
+	#print('Deal\t Clust1\t Clust2\t Clust3\t Clust4')
+	some3.append('Deal    Clust1    Clust2    Clust3    Clust4')
+	for i in range(deal_number):
+		for j in range(cust_number):
+			if deal_customer_matrix[i,j] == 1:
+				deal_cluster_matrix[i,prediction[j]] += 1
+
+	somesub = {}
+	for i in range(deal_number):
+		#print(i+1,'\t',end='')
+		somesub[i+1] = []
+		for j in range(K):
+			somesub[i+1].append(str(deal_cluster_matrix[i,j])+'&nbsp;&nbsp;&nbsp;&nbsp;')
+	some3.append(somesub)
+	some_data['some1'] = some1
+	some_data['some2'] = some2
+	some_data['some3'] = some3
+	some_data['finals'] = 'The total distance of the solution found is '+str(sum((km.transform(customer_deal_matrix)).min(axis=1)))
+	return some_data
 
 '''k nearest neighbors'''
 def loadDataset(filename, split, trainingSet=[] , testSet=[]):
@@ -72,12 +169,19 @@ def getAccuracy(testSet, predictions):
 	for x in range(len(testSet)):
 		if testSet[x][-1] == predictions[x]:
 			correct += 1
+	f = open('static/tsv/data.tsv', 'r+')
+	accu =  (correct/float(len(testSet))) * 100.0
+	f.seek(0)
+	data = 'apples\n'+str(accu)+'\n'+str(100-accu)
+	f.write(data)
+	f.truncate()
+	f.close()
 	return (correct/float(len(testSet))) * 100.0
+
+
 
 '''fp growth'''
 from collections import defaultdict, namedtuple
-from itertools import imap
-
 
 def find_frequent_itemsets(transactions, minimum_support, include_support=False):
 	items = defaultdict(lambda: 0) # mapping from items to their supports
@@ -212,16 +316,15 @@ class FPTree(object):
 		return (collect_path(node) for node in self.nodes(item))
 
 	def inspect(self):
-		print 'Tree:'
+		print ('Tree:')
 		self.root.inspect(1)
-
 		print
-		print 'Routes:'
+		print ('Routes:')
 		for item, nodes in self.items():
-			print '  %r' % item
+			print ('  %r' % item)
 			for node in nodes:
-				print '    %r' % node
-		print '\n'
+				print ('    %r' % node)
+		print ('\n')
 
 	def _removed(self, node):
 		"""Called when `node` is removed from the tree; performs cleanup."""
@@ -532,19 +635,14 @@ def runApriori(data_iter, minSupport, minConfidence):
 def printResults(items, rules,iter):
 	"""prints the generated itemsets and the confidence rules"""
 	f = {}
-	fil = open('results.txt','a')
 	global super_f
 	f['items'] = []
 	f['rules'] = []
 	for item, support in items:
 		f['items'].append([str(item),round(support,3)])
-		fil.write("item: %s , %.3f" % (str(item), support))
-	fil.write("\n------------------------ RULES:")
 	for rule, confidence in rules:
 		pre, post = rule
 		f['rules'].append([str(pre),str(post),round(confidence,3)])
-		fil.write("Rule: %s ==> %s , %.3f" % (str(pre), str(post), confidence))
-	fil.close()
 	super_f[iter] = f
 
 
@@ -555,7 +653,14 @@ def dataFromFile(fname):
 		line = line.strip().rstrip(',')                         # Remove trailing comma
 		record = frozenset(line.split(','))
 		yield record
+	file_iter.close()
 
+
+''' routes '''
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static','img'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 @app.route('/file',methods=['GET','POST'])
 def upload_file():
 	if request.method == 'POST':
@@ -566,7 +671,7 @@ def upload_file():
 			flash(filename)
 			return redirect(url_for('upload_file',filename=filename))
 		else:
-			print 'Error uploading: Invalid file format'
+			print ('Error uploading: Invalid file format')
 	return render_template('file_upload.html',title='Upload File')
 
 @app.route('/uploads/<filename>')
@@ -575,7 +680,8 @@ def uploaded_file(filename):
 
 @app.route('/')
 def index():
-	return 'index'
+	return redirect(url_for('upload_file'))
+
 @app.route('/file/results.txt')
 def ret_file():
 	return os.path.abspath('results.txt')
@@ -599,7 +705,34 @@ def fp_growth(filename):
 				something.append('{' + ', '.join(itemset) + '} ' + str(support))
 		finally:
 			f.close()
-		return json.dumps(something)
+		return json.dumps(something, indent=4)
+
+@app.route('/dbscan/<filename>',methods=['GET','POST'])
+def dbscan(filename):
+	if request.method == 'GET':
+		labels = ['id', 'date_time', 'incident_num', 'location', 'apt_lot', 'type_id', 'lat', 'lng']
+		data = csv.DictReader(open('uploads/'+filename, 'r').readlines()[1:], labels)
+		some_data = []
+		some_data = dbscan_processing(data)
+		return json.dumps(some_data, indent=4)
+
+
+@app.route('/kmeans/<filename>',methods=['GET','POST'])
+def kmeans(filename):
+	if request.method == 'GET':
+		csvf = open('csv/Offers.csv','rU')
+		rows = csv.reader(csvf)
+		offer_sheet = [row for row in rows]
+		csvf.close()
+
+		#read in Transactions.csv
+		csvf = open('uploads/'+filename,'rU')
+		rows = csv.reader(csvf)
+		transaction_sheet = [row for row in rows]
+		csvf.close()
+		some_object = {}
+		some_object = kmeans_processing(offer_sheet,transaction_sheet)
+		return json.dumps(some_object, indent=4)
 
 @app.route('/knn/<filename>',methods=['GET','POST'])
 def knn(filename):
@@ -608,13 +741,13 @@ def knn(filename):
 		trainingSet=[]
 		testSet=[]
 		split = 0.67
-		loadDataset('iris.csv', split, trainingSet, testSet)
-		print 'Train set: ' + repr(len(trainingSet))
-		print 'Test set: ' + repr(len(testSet))
+		loadDataset('uploads/'+filename, split, trainingSet, testSet)
+		print ('Train set: ' + repr(len(trainingSet)))
+		print ('Test set: ' + repr(len(testSet)))
 		# generate predictions
 		something = []
 		predictions=[]
-		k = 7
+		k = 5
 		for x in range(len(testSet)):
 			neighbors = getNeighbors(trainingSet, testSet[x], k)
 			result = getResponse(neighbors)
@@ -624,18 +757,23 @@ def knn(filename):
 		accuracy = getAccuracy(testSet, predictions)
 		#print('Accuracy: ' + repr(accuracy) + '%')
 		something.append('Accuracy: ' + repr(accuracy) + '%')
-		return json.dumps(something)
+		return json.dumps(something, indent=4)
 
 @app.route('/apriori/<filename>',methods=['GET','POST'])
 def apriori(filename):
 	if request.method == 'GET':
 		items, rules = runApriori(dataFromFile('uploads/'+filename),0.15,0.6)
 		#return redirect(url_for('apriori_result'),code=302)
-		return json.dumps(super_f)
-@app.route('/apriori',methods=['GET','POST'])
-def apriori_result():
-	if request.method == 'GET':
-		return render_template('apriori.html')
+		return json.dumps(super_f, indent=4)
+
+@app.route('/d3')
+def d3():
+	return render_template('d3js.html')
+
+@app.route('/datatree')
+def datatree():
+	return render_template('datatree.html',title=" FP Tree")
+
 
 if __name__ == '__main__':
 	app.run(debug=True,port=int(5000))

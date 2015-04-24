@@ -4,7 +4,7 @@ An online data mining tool
 Get Ready for the Awesome!
 
 Clone this repo
-`git clone https://github.com/aksris/akminer.git`
+`git clone https://username@bitbucket.org/aksris/akminer.git`
 
 To Run:
   1. Run virtualenv

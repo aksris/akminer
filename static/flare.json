@@ -1,0 +1,15 @@
+{
+	"name": "flare",
+	"children": [
+		{
+		"name": "clutser",
+		"children" : [
+			{"name": "Something","size":200},
+			{"name": "Something1","size": 200},
+			{"name": "Something2","size":200},
+			{"name": "Something3","size":200},
+			{"name": "Something4","size":200}
+		]
+		}
+	]
+}

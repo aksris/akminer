@@ -62,7 +62,7 @@ def main():
 	print 'Test set: ' + repr(len(testSet))
 	# generate predictions
 	predictions=[]
-	k = 7
+	k = 5
 	for x in range(len(testSet)):
 		neighbors = getNeighbors(trainingSet, testSet[x], k)
 		result = getResponse(neighbors)

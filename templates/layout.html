@@ -1,9 +1,24 @@
 <!doctype html>
 <title>{% block title %}{% endblock %} | Online Miner </title>
+<link rel='stylesheet' href='/static/css/vendor/bootstrap.min.css' type='text/css'>
+<link rel='stylesheet' href='/static/css/vendor/flat-ui.min.css' type='text/css'>
 <link rel='stylesheet' href='/static/css/style.css' type='text/css'>
+
 <script type='text/javascript' src='/static/js/vendor/jquery-1.11.2.min.js'></script>
+<script type='text/javascript' src='/static/js/vendor/d3.min.js'></script>
+<script type='text/javascript' src='/static/js/vendor/bootstrap.min.js'></script>
+
+
 <div class=box>
-	<h1><a href=/>ak miner</a></h1>
-	<p class=tagline>AK Miner is an online Data Mining Tool
+	<h1 style="margin:0"><a href=/>ak miner</a></h1>
+	<p class=tagline>AK Miner is an online Data Mining Tool</p>
+	<a href='/'>
+		<img src="../static/img/map.svg" class="pull-right" style="top:0;margin-top:-115px;width:100px"></img>
+	</a>
 	{% block body %}{% endblock %}
 </div>
+<footer>
+	<div class="col-md-4 col-md-offset-4 pull-right" style="">
+		<div class="pull-right" style="color:#ECF0F1;">Made with &nbsp;<span class="fui-heart" style="color:#E74C3C"></span>&nbsp; by <a href="mailto:y1dothie@gmail.com?subject=Found%20a%20bug!&amp;body=The%20bug%20is">Nxfunl</div>
+	</div>
+</footer>

@@ -1,8 +1,7 @@
 {% extends "layout.html" %}
 {% block title %}{{title}}{% endblock %}
 {% block body %}
-	<h1>Upload new File</h1>
-	<pre></pre>
+	<h3>Upload new file</h3>
 	<form class='some-form' action="" method=post enctype=multipart/form-data>
 		<div style='margin:10px auto;border:1px dotted black;height:200px'>
 			<div class='addText' style='text-align:center;margin-top:100px;'> 
@@ -14,24 +13,27 @@
 					{% endfor %}
 				{% endwith %}
 			</div>
-			<input class='input-filer' type='file' name='file' accept='csv/*' style='margin-top:-120px;width:31.5%;height:200px;position:absolute;opacity:0;cursor:pointer'>
+			<input class='input-filer' type='file' name='file' accept='csv/*' style='margin-top:-130px;width:34.3%;height:200px;position:absolute;opacity:0;cursor:pointer'>
 		</div>
 		{% with messages = get_flashed_messages() %}
 			{% for message in messages %}
 				<div style='text-align:center'>
-					<input type='button' value='Apriori' class='apriori'>
-					<input type='button' value='FP Growth' class='fp-growth'>
-					<input type='button' value='K-Nearest Neighbors' class='knn'>
+					<input type='button' value='Apriori' class='apriori btn   btn-md btn-primary'>
+					<input type='button' value='FP Growth' class='fp-growth btn   btn-md btn-warning'>
+					<input type='button' value='K-Nearest Neighbors' class='knn btn   btn-md btn-danger'>
+					<input type='button' value='K-Means' class='kmeans btn   btn-md btn-info'>
+					<input type='button' value='DBSCAN' class='dbscan btn   btn-md btn-success'>
 				</div>
 			{% else %}
 				<div style='text-align:center'>
-					<input type=submit value=Upload>
+					<input type=submit class="upload-button btn   btn-lg btn-inverse" value=Upload>
 				</div>
 			{% endfor %}
 		{% endwith %}
 	</form>
 	<script type='text/javascript'>
 		$(document).ready(function(){
+
 			function readURL(input) {
 				console.log("here in readURL");
 				if (input.files && input.files[0]) {
@@ -59,6 +61,54 @@
 				}
 				return size;
 			};
+			$('.dbscan').click(function(e){
+				var data = window.location.search.split('=')[1];
+				$.ajax({
+					url:'/dbscan/'+data,
+					method:'get',
+					dataType: 'json'
+				})
+				.error(function(err){
+					$('.some-form').hide();
+					$('.box').append('<div class="alert alert-danger" style="text:align:center" role="alert"> Warning! Some error has occurred. Try again with valid data</div>');
+				})
+				.done(function(res){
+					$('.box').append('<div style="text-align:center;"><button value="Upload Another File" class="go-back btn   btn-lg btn-inverse" onclick="javascript:window.location=\'/file\'">Upload Another File</button></div>');
+					$('.box').append('<div>Cluster ID&nbsp;&nbsp;Lat&nbsp;&nbsp;Long')
+					for(var i = 0; i < res.length; i++){
+						$('.box').append('<div>'+res[i]+'</div>')
+					}
+					$('.some-form').hide();
+				});
+			});
+			$('.kmeans').click(function(e){
+				var data = window.location.search.split('=')[1];
+				$.ajax({
+					url:'/kmeans/'+data,
+					method:'get',
+					dataType: 'json'
+				})
+				.error(function(err){
+					$('.some-form').hide();
+					$('.box').append('<div class="alert alert-danger" style="text:align:center" role="alert"> Warning! Some error has occurred. Try again with valid data</div>');
+				})
+				.done(function(res){
+					$('.box').append('<div style="text-align:center;"><button value="Upload Another File" class="go-back btn   btn-lg btn-inverse" onclick="javascript:window.location=\'/file\'">Upload Another File</button></div>');
+					for(var i in res.some1){
+						$('.box').append('<div>'+res.some1[i].split(' ').join('&nbsp;')+'</div><br>');
+					}
+					for(var i in res.some2){
+						$('.box').append('<div>'+res.some2[i].split(' ').join('&nbsp;')+'</div><br>');
+					}
+					$('.box').append('<div>Deal&nbsp;&nbsp;&nbsp;&nbsp;Clust1&nbsp;&nbsp;&nbsp;&nbsp;Clust2&nbsp;&nbsp;&nbsp;&nbsp;Clust3&nbsp;&nbsp;&nbsp;&nbsp;Clust4</div>');//.split(' ').join('&nbsp;')+'</div><br>');
+					for(var i in res.some3[1]){
+						$('.box').append('<div>'+(res.some3[1][i])+'</div>');//.split(' ').join('&nbsp;')+'</div><br>');
+					}
+					$('.box').append('<div>'+res.finals+'</div>')
+
+					$('.some-form').hide();
+				});
+			});
 			$('.knn').click(function(e){
 				var data = window.location.search.split('=')[1];
 				$.ajax({
@@ -66,7 +116,14 @@
 					method:'get',
 					dataType: 'json'
 				})
+				.error(function(err){
+					$('.some-form').hide();
+					$('.box').append('<div class="alert alert-danger" style="text:align:center" role="alert"> Warning! Some error has occurred. Try again with valid data</div>');
+				})
 				.done(function(res){
+					$('.box').append('<style> svg {     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;     margin: auto;     position: relative;     width: 960px;     margin-left: -37%; }  .svg-form {     position: absolute;     right: 10px;     top: 10px; } </style> <div class="some" style="position:absolute;">     <form class="svg-form">         <!-- <label><input type="radio" name="dataset" value="apples" checked> Apples</label> -->         <label style="display:none;">             <input type="radio" name="dataset" value="oranges" checked> Oranges</label>     </form>     <script type="text/javascript" src="/static/js/vendor/d3.min.js"><\/script>     <div style="position: relative;margin-top:220px;margin-left:235px">Accuracy <div style="margin-left:-25%;">'+res[res.length-1].split(': ')[1]+'</div> </div>     <script>     var width = 960,         height = 500,         radius = Math.min(width, height) / 2;      var color = d3.scale.category20();      var pie = d3.layout.pie()         .value(function(d) {             return d.apples;         })         .sort(null);      var arc = d3.svg.arc()         .innerRadius(radius - 100)         .outerRadius(radius - 20);      var svg = d3.select("div.box").append("svg")         .attr("width", width)         .attr("height", height)         .append("g")         .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");      d3.tsv("../static/tsv/data.tsv", type, function(error, data) {         var path = svg.datum(data).selectAll("path")             .data(pie)             .enter().append("path")             .attr("fill", function(d, i) {                 return color(i);             })             .attr("d", arc);     });      function type(d) {         d.apples = +d.apples;         d.oranges = +d.oranges;         return d;     }     <\/script> <\/div>')
+					$('.box').append('<div style="text-align:center;"><button value="Upload Another File" class="go-back btn   btn-lg btn-inverse" onclick="javascript:window.location=\'/file\'">Upload Another File</button></div>');
+					var accuracy = parseFloat(res[res.length-1].split(': ')[1].split('%')[0]);
 					for(var i = 0; i < res.length; i++){
 						$('.box').append('<div>'+res[i]+'</div>')
 					}
@@ -80,7 +137,13 @@
 					method:'get',
 					dataType: 'json'
 				})
+				.error(function(err){
+					$('.some-form').hide();
+					$('.box').append('<div class="alert alert-danger" style="text:align:center" role="alert"> Warning! Some error has occurred. Try again with valid data</div>');
+				})
 				.done(function(res){
+					$('.box').append('<div style="text-align:center;float:left;margin-left:55px"><button value="View FP-Tree Demo" class="fp-but btn   btn-lg btn-info" onclick="javascript:window.location=\'/datatree\'">View FP-Tree Demo</button></div>');
+					$('.box').append('<div style="text-align:center;"><button value="Upload Another File" class="go-back btn   btn-lg btn-inverse" onclick="javascript:window.location=\'/file\'">Upload Another File</button></div>');
 					for(var i = 0; i < res.length; i++){
 						$('.box').append('<div>'+res[i]+'</div>')
 					}
@@ -94,11 +157,13 @@
 					method:'get',
 					dataType: 'json'
 				})
+				.error(function(err){
+					$('.some-form').hide();
+					$('.box').append('<div class="alert alert-danger" style="text:align:center" role="alert"> Warning! Some error has occurred. Try again with valid data</div>');
+				})
 				.done(function(res){
 					//res['1'].items
-					console.log(res);
-					$('.box').append('<div style="width:30vh;margin-left:30vh;background:burlywood;padding:7px;cursor:pointer;border:1px solid" class="go-back">Upload another file</div>');
-					$('.go-back').click(function(){window.location = '/file';});
+					$('.box').append('<div style="text-align:center;"><button value="Upload Another File" class="go-back btn   btn-lg btn-inverse" onclick="javascript:window.location=\'/file\'">Upload Another File</button></div>');
 					for (var i = 1; i <= Object.size(res);i++){
 						$('.box').append('<div class=rule'+i+'>'+i+'. Rules----------------------------------------------------------------------#'+'</div>');
 						for(var j = 0; j < Object.size(res[i].rules);j++)

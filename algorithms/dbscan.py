@@ -19,10 +19,10 @@ distance_matrix = distance.squareform(distance.pdist(coords))
 # Run DBSCAN. Setting epsilon with lat/lon data like we have here is an inexact science. 0.03 looked
 # good after a few test runs. Ideally we'd project the data and set epsilon using meters or feet.
 db = DBSCAN(eps=0.03).fit(distance_matrix)
-
+some_data = []
 # And now we print out the results in the form cluster_id,lat,lng. You can save this to a file and import
 # directly into a mapping program or Fusion Tables if you want to visualize it.
 for k in set(db.labels_):
-    class_members = [index[0] for index in np.argwhere(db.labels_ == k)]
-    for index in class_members:
-        print '%s,%s' % (int(k), '{0},{1}'.format(*coords[index]))
+	class_members = [index[0] for index in np.argwhere(db.labels_ == k)]
+	for index in class_members:
+		print '%s,%s' % (int(k), '{0},{1}'.format(*coords[index]))
